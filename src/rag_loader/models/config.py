@@ -1,97 +1,47 @@
-"""
-PipelineConfig Data Model
+"""Validated configuration for the RAG indexing pipeline."""
 
-This module defines the PipelineConfig class, which manages configuration
-parameters for the RAG indexing pipeline including chunking, embedding,
-and storage settings.
-"""
+from typing import Annotated
 
-from dataclasses import dataclass
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+
+NonEmptyStr = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
-@dataclass
-class PipelineConfig:
-    """
-    Configuration parameters for the RAG indexing pipeline.
+class PipelineConfig(BaseModel):
+    """Validated parameters for chunking, embedding, and vector storage.
 
-    This class encapsulates all configurable parameters for the pipeline
-    including text chunking settings, embedding model configuration,
-    and ChromaDB connection details.
+    Validation runs at construction time: invalid parameters raise
+    ``pydantic.ValidationError`` instead of being silently accepted, so
+    misconfiguration fails fast at the edge of the system rather than surfacing
+    deep inside the pipeline. Instances are immutable, making the config safe to
+    share across concurrent document processing.
 
     Attributes:
-        chunk_size (int): Maximum size of text chunks in characters (default: 1000)
-        chunk_overlap (int): Number of overlapping characters between chunks (default: 200)
-        embedding_model (str): Name/path of the embedding model to use
-        chromadb_collection (str): Name of the ChromaDB collection (default: "rag_documents")
-        chromadb_host (str): ChromaDB server host address (default: "localhost")
-        chromadb_port (int): ChromaDB server port number (default: 8000)
+        chunk_size: Maximum size of a text chunk in characters (> 0).
+        chunk_overlap: Overlap between consecutive chunks (>= 0, < chunk_size).
+        embedding_model: Name or path of the embedding model.
+        chromadb_collection: Target ChromaDB collection name.
+        chromadb_host: ChromaDB server host.
+        chromadb_port: ChromaDB server port (1-65535).
     """
 
-    chunk_size: int = 1000
-    chunk_overlap: int = 200
-    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    chromadb_collection: str = "rag_documents"
-    chromadb_host: str = "localhost"
-    chromadb_port: int = 8000
+    model_config = ConfigDict(frozen=True)
 
-    def validate(self) -> bool:
-        """
-        Validate configuration parameters for correctness and consistency.
+    chunk_size: int = Field(default=1000, gt=0)
+    chunk_overlap: int = Field(default=200, ge=0)
+    embedding_model: NonEmptyStr = "sentence-transformers/all-MiniLM-L6-v2"
+    chromadb_collection: NonEmptyStr = "rag_documents"
+    chromadb_host: NonEmptyStr = "localhost"
+    chromadb_port: int = Field(default=8000, ge=1, le=65535)
 
-        Performs comprehensive validation of all configuration parameters
-        to ensure they are within acceptable ranges and logically consistent.
-
-        Returns:
-            bool: True if all parameters are valid, False otherwise
-
-        Validation Rules:
-            - chunk_size must be positive (> 0)
-            - chunk_overlap must be non-negative (>= 0)
-            - chunk_overlap must be less than chunk_size
-            - embedding_model must be a non-empty string
-            - chromadb_collection must be a non-empty string
-            - chromadb_host must be a non-empty string
-            - chromadb_port must be in valid port range (1-65535)
-        """
-        # Validate chunk_size is positive
-        if self.chunk_size <= 0:
-            return False
-
-        # Validate chunk_overlap is non-negative
-        if self.chunk_overlap < 0:
-            return False
-
-        # Validate chunk_overlap is less than chunk_size
+    @model_validator(mode="after")
+    def _overlap_smaller_than_size(self) -> "PipelineConfig":
+        """Ensure chunk overlap is strictly smaller than chunk size."""
         if self.chunk_overlap >= self.chunk_size:
-            return False
-
-        # Validate embedding_model is non-empty string
-        if not isinstance(self.embedding_model, str) or len(self.embedding_model.strip()) == 0:
-            return False
-
-        # Validate chromadb_collection is non-empty string
-        if (
-            not isinstance(self.chromadb_collection, str)
-            or len(self.chromadb_collection.strip()) == 0
-        ):
-            return False
-
-        # Validate chromadb_host is non-empty string
-        if not isinstance(self.chromadb_host, str) or len(self.chromadb_host.strip()) == 0:
-            return False
-
-        # Validate chromadb_port is in valid range
-        return isinstance(self.chromadb_port, int) and 1 <= self.chromadb_port <= 65535
+            raise ValueError("chunk_overlap must be smaller than chunk_size")
+        return self
 
     @classmethod
     def get_defaults(cls) -> "PipelineConfig":
-        """
-        Create a PipelineConfig instance with default values.
-
-        This class method provides a convenient way to obtain a configuration
-        object with all default values, useful for initialization and testing.
-
-        Returns:
-            PipelineConfig: A new instance with default configuration values
-        """
+        """Return a PipelineConfig populated entirely with default values."""
         return cls()
