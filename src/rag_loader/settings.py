@@ -26,8 +26,14 @@ class Settings(BaseSettings):
     chunk_size: int = Field(default=1000, gt=0)
     chunk_overlap: int = Field(default=200, ge=0)
 
-    # Embeddings
+    # Embeddings (provider selected via LangChain init_embeddings)
+    embedding_provider: str = "huggingface"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+
+    # Chat model / LLM (provider selected via LangChain init_chat_model)
+    llm_provider: str = "anthropic"
+    llm_model: str = "claude-3-5-sonnet-latest"
+    llm_temperature: float = 0.0
 
     # Vector store (ChromaDB)
     chromadb_collection: str = "rag_documents"
