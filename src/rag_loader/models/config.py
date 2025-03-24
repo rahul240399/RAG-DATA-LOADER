@@ -1,6 +1,6 @@
 """Validated configuration for the RAG indexing pipeline."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
@@ -29,6 +29,7 @@ class PipelineConfig(BaseModel):
 
     chunk_size: int = Field(default=1000, gt=0)
     chunk_overlap: int = Field(default=200, ge=0)
+    chunk_strategy: Literal["recursive", "token"] = "recursive"
     embedding_model: NonEmptyStr = "sentence-transformers/all-MiniLM-L6-v2"
     chromadb_collection: NonEmptyStr = "rag_documents"
     chromadb_host: NonEmptyStr = "localhost"

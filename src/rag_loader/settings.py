@@ -1,5 +1,7 @@
 """Application settings loaded from the environment and an optional .env file."""
 
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -25,6 +27,7 @@ class Settings(BaseSettings):
     # Chunking
     chunk_size: int = Field(default=1000, gt=0)
     chunk_overlap: int = Field(default=200, ge=0)
+    chunk_strategy: Literal["recursive", "token"] = "recursive"
 
     # Embeddings (provider selected via LangChain init_embeddings)
     embedding_provider: str = "huggingface"
@@ -45,6 +48,7 @@ class Settings(BaseSettings):
         return PipelineConfig(
             chunk_size=self.chunk_size,
             chunk_overlap=self.chunk_overlap,
+            chunk_strategy=self.chunk_strategy,
             embedding_model=self.embedding_model,
             chromadb_collection=self.chromadb_collection,
             chromadb_host=self.chromadb_host,
