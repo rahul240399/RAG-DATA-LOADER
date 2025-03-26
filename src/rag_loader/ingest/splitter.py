@@ -36,10 +36,17 @@ def _chunk_id(source: str, page: int, start: int, end: int) -> str:
 
 
 def split_documents(docs: Sequence[Document], config: PipelineConfig) -> list[TextChunk]:
-    """Split documents into TextChunks, preserving source and page provenance."""
+    """Split documents into TextChunks, preserving source and page provenance.
+
+    Overlap between adjacent chunks is preserved by the underlying splitter, and
+    each chunk records its character span and position in the sequence so the
+    original ordering and location can be reconstructed from the vector store.
+    """
     splitter = build_splitter(config)
+    pieces = splitter.split_documents(list(docs))
+    total = len(pieces)
     chunks: list[TextChunk] = []
-    for piece in splitter.split_documents(list(docs)):
+    for index, piece in enumerate(pieces):
         content = piece.page_content
         source = str(piece.metadata.get("source", "unknown"))
         page = int(piece.metadata.get("page", 0))
@@ -48,7 +55,14 @@ def split_documents(docs: Sequence[Document], config: PipelineConfig) -> list[Te
         chunks.append(
             TextChunk(
                 content=content,
-                metadata={"source": source, "page": page},
+                metadata={
+                    "source": source,
+                    "page": page,
+                    "start_index": start,
+                    "end_index": end,
+                    "chunk_index": index,
+                    "total_chunks": total,
+                },
                 start_index=start,
                 end_index=end,
                 source_document=source,
