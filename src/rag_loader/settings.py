@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     chromadb_host: str = "localhost"
     chromadb_port: int = 8000
 
+    # Vector store backend selection
+    vector_store: Literal["chroma", "qdrant"] = "chroma"
+    chroma_persist_directory: str | None = None
+    qdrant_url: str | None = None
+
     def pipeline_config(self) -> PipelineConfig:
         """Build a validated :class:`PipelineConfig` from the current settings."""
         return PipelineConfig(
