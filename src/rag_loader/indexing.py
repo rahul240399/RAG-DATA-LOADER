@@ -47,9 +47,25 @@ class Indexer:
         return self._store
 
     def index_pdf(self, path: str | Path) -> DocumentProcessingResult:
-        """Ingest, embed, and store one PDF, reporting a success result."""
+        """Ingest, embed, and store one PDF, reporting success or failure.
+
+        Failures (missing file, parse error, store outage) are captured in the
+        result instead of raising, so a batch can continue past a bad document.
+        """
         start = time.perf_counter()
-        ids = self._runnable.invoke(path)
+        source = str(path)
+        try:
+            ids = self._runnable.invoke(path)
+        except Exception as exc:
+            return DocumentProcessingResult(
+                success=False,
+                chunks_processed=0,
+                embeddings_generated=0,
+                storage_success=False,
+                processing_time=time.perf_counter() - start,
+                errors=[f"{type(exc).__name__}: {exc}"],
+                source_document=source,
+            )
         return DocumentProcessingResult(
             success=True,
             chunks_processed=len(ids),
@@ -57,5 +73,5 @@ class Indexer:
             storage_success=True,
             processing_time=time.perf_counter() - start,
             errors=[],
-            source_document=str(path),
+            source_document=source,
         )
