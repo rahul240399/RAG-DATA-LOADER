@@ -1,6 +1,8 @@
 """End-to-end indexing: ingest a PDF, embed its chunks, and store the vectors."""
 
+import asyncio
 import time
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 from langchain_core.runnables import Runnable, RunnableLambda
@@ -8,7 +10,7 @@ from langchain_core.runnables import Runnable, RunnableLambda
 from rag_loader.factories import build_embeddings
 from rag_loader.ingest.pipeline import build_ingestion_runnable
 from rag_loader.models.config import PipelineConfig
-from rag_loader.models.results import DocumentProcessingResult
+from rag_loader.models.results import BatchProcessingResult, DocumentProcessingResult
 from rag_loader.models.text_chunk import TextChunk
 from rag_loader.settings import Settings
 from rag_loader.store import VectorBackend, build_vector_store
@@ -75,3 +77,26 @@ class Indexer:
             errors=[],
             source_document=source,
         )
+
+    def index_paths(self, paths: Iterable[str | Path]) -> BatchProcessingResult:
+        """Index PDFs sequentially, aggregating per-document results."""
+        batch = BatchProcessingResult()
+        for path in paths:
+            batch.add_document_result(self.index_pdf(path))
+        return batch
+
+    async def aindex_paths(
+        self, paths: Sequence[str | Path], concurrency: int = 4
+    ) -> BatchProcessingResult:
+        """Index PDFs concurrently with a bounded number of in-flight documents."""
+        semaphore = asyncio.Semaphore(concurrency)
+
+        async def _index_one(path: str | Path) -> DocumentProcessingResult:
+            async with semaphore:
+                return await asyncio.to_thread(self.index_pdf, path)
+
+        results = await asyncio.gather(*(_index_one(path) for path in paths))
+        batch = BatchProcessingResult()
+        for result in results:
+            batch.add_document_result(result)
+        return batch
