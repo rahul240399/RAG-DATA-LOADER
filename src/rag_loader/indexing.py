@@ -3,6 +3,7 @@
 import asyncio
 import time
 from collections.abc import Iterable, Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 
 from langchain_core.runnables import Runnable, RunnableLambda
@@ -14,6 +15,11 @@ from rag_loader.models.results import BatchProcessingResult, DocumentProcessingR
 from rag_loader.models.text_chunk import TextChunk
 from rag_loader.settings import Settings
 from rag_loader.store import VectorBackend, build_vector_store
+
+
+def _now() -> str:
+    """Current UTC timestamp in ISO 8601 form."""
+    return datetime.now(UTC).isoformat()
 
 
 def build_index_runnable(
@@ -78,17 +84,26 @@ class Indexer:
             source_document=source,
         )
 
-    def index_paths(self, paths: Iterable[str | Path]) -> BatchProcessingResult:
-        """Index PDFs sequentially, aggregating per-document results."""
-        batch = BatchProcessingResult()
-        for path in paths:
-            batch.add_document_result(self.index_pdf(path))
+    @staticmethod
+    def _collect(
+        results: Iterable[DocumentProcessingResult], started_at: str
+    ) -> BatchProcessingResult:
+        batch = BatchProcessingResult(started_at=started_at)
+        for result in results:
+            batch.add_document_result(result)
+        batch.completed_at = _now()
         return batch
+
+    def index_paths(self, paths: Iterable[str | Path]) -> BatchProcessingResult:
+        """Index PDFs sequentially, aggregating timestamped per-document results."""
+        started_at = _now()
+        return self._collect((self.index_pdf(path) for path in paths), started_at)
 
     async def aindex_paths(
         self, paths: Sequence[str | Path], concurrency: int = 4
     ) -> BatchProcessingResult:
         """Index PDFs concurrently with a bounded number of in-flight documents."""
+        started_at = _now()
         semaphore = asyncio.Semaphore(concurrency)
 
         async def _index_one(path: str | Path) -> DocumentProcessingResult:
@@ -96,7 +111,4 @@ class Indexer:
                 return await asyncio.to_thread(self.index_pdf, path)
 
         results = await asyncio.gather(*(_index_one(path) for path in paths))
-        batch = BatchProcessingResult()
-        for result in results:
-            batch.add_document_result(result)
-        return batch
+        return self._collect(results, started_at)
