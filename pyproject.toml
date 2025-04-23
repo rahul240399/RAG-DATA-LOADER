@@ -11,12 +11,16 @@ dependencies = [
     "pydantic-settings>=2.2",
     "langchain>=0.3.9",
     "langchain-core>=0.3.9",
+    "typer>=0.12",
 ]
 
 [project.optional-dependencies]
 huggingface = ["langchain-huggingface>=0.1", "sentence-transformers>=2.6"]
 openai = ["langchain-openai>=0.2"]
 voyage = ["langchain-voyageai>=0.1"]
+
+[project.scripts]
+rag-loader = "rag_loader.cli:app"
 
 [build-system]
 requires = ["hatchling"]
