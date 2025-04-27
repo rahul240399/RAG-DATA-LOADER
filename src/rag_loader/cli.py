@@ -1,5 +1,6 @@
 """Command-line interface for the RAG data loader."""
 
+import asyncio
 from pathlib import Path
 from typing import Annotated
 
@@ -24,7 +25,7 @@ def index(
     paths: Annotated[list[Path], typer.Argument(help="PDF files to index.")],
 ) -> None:
     """Index one or more PDFs and print a summary."""
-    batch = _build_indexer().index_paths(paths)
+    batch = asyncio.run(_build_indexer().aindex_paths(paths))
     stats = batch.get_summary_statistics()
     typer.echo(f"Indexed {stats['successful_documents']}/{stats['total_documents']} documents")
     typer.echo(f"Chunks stored: {stats['total_chunks_processed']}")
