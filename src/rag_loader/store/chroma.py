@@ -6,6 +6,7 @@ from pathlib import Path
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
+from langchain_core.retrievers import BaseRetriever
 
 from rag_loader.models.text_chunk import TextChunk
 from rag_loader.store.base import chunk_to_document
@@ -37,3 +38,11 @@ class ChromaStore:
 
     def similarity_search(self, query: str, k: int = 4) -> list[Document]:
         return self._store.similarity_search(query, k=k)
+
+    def as_retriever(self, k: int = 4, score_threshold: float | None = None) -> BaseRetriever:
+        if score_threshold is not None:
+            return self._store.as_retriever(
+                search_type="similarity_score_threshold",
+                search_kwargs={"k": k, "score_threshold": score_threshold},
+            )
+        return self._store.as_retriever(search_kwargs={"k": k})

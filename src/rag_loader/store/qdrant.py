@@ -5,6 +5,7 @@ from collections.abc import Sequence
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
+from langchain_core.retrievers import BaseRetriever
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
@@ -54,3 +55,11 @@ class QdrantStore:
 
     def similarity_search(self, query: str, k: int = 4) -> list[Document]:
         return self._store.similarity_search(query, k=k)
+
+    def as_retriever(self, k: int = 4, score_threshold: float | None = None) -> BaseRetriever:
+        if score_threshold is not None:
+            return self._store.as_retriever(
+                search_type="similarity_score_threshold",
+                search_kwargs={"k": k, "score_threshold": score_threshold},
+            )
+        return self._store.as_retriever(search_kwargs={"k": k})

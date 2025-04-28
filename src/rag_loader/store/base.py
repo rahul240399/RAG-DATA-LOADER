@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
 
 from langchain_core.documents import Document
+from langchain_core.retrievers import BaseRetriever
 
 from rag_loader.models.text_chunk import TextChunk
 
@@ -32,4 +33,8 @@ class VectorBackend(Protocol):
 
     def similarity_search(self, query: str, k: int = 4) -> list[Document]:
         """Return the ``k`` documents most similar to ``query``."""
+        ...
+
+    def as_retriever(self, k: int = 4, score_threshold: float | None = None) -> BaseRetriever:
+        """Return a LangChain retriever over this store for use in chains."""
         ...
