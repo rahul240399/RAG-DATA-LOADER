@@ -11,6 +11,14 @@ dependencies = [
     "pydantic-settings>=2.2",
     "langchain>=0.3.9",
     "langchain-core>=0.3.9",
+    "langchain-community>=0.3",
+    "langchain-text-splitters>=0.3",
+    "pymupdf>=1.24",
+    "tiktoken>=0.7",
+    "langchain-chroma>=0.1.4",
+    "chromadb>=0.5",
+    "langchain-qdrant>=0.1",
+    "qdrant-client>=1.9",
     "typer>=0.12",
 ]
 
