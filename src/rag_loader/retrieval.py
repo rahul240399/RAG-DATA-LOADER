@@ -9,6 +9,8 @@ from langchain_core.documents.compressor import BaseDocumentCompressor
 from langchain_core.retrievers import BaseRetriever
 from pydantic import ConfigDict
 
+from rag_loader.models.text_chunk import TextChunk
+
 
 class RerankingRetriever(BaseRetriever):
     """Retrieve a broad candidate set, then rerank/compress it.
@@ -66,3 +68,54 @@ def cross_encoder_compressor(
     from sentence_transformers import CrossEncoder
 
     return CrossEncoderCompressor(model=CrossEncoder(model_name), top_n=top_n)
+
+
+class HybridRetriever(BaseRetriever):
+    """Fuse several retrievers' rankings with Reciprocal Rank Fusion (RRF).
+
+    Dense (semantic) and sparse (BM25 keyword) retrievers surface different
+    results; RRF blends their rankings so a document ranked highly by either
+    rises to the top, improving recall without a learned combiner.
+    """
+
+    retrievers: list[BaseRetriever]
+    weights: list[float] | None = None
+    k: int = 4
+    rrf_k: int = 60
+
+    def _get_relevant_documents(
+        self, query: str, *, run_manager: CallbackManagerForRetrieverRun
+    ) -> list[Document]:
+        weights = self.weights or [1.0] * len(self.retrievers)
+        scores: dict[str, float] = {}
+        documents: dict[str, Document] = {}
+        for retriever, weight in zip(self.retrievers, weights, strict=True):
+            results = retriever.invoke(query, config={"callbacks": run_manager.get_child()})
+            for rank, doc in enumerate(results):
+                key = doc.page_content
+                documents.setdefault(key, doc)
+                scores[key] = scores.get(key, 0.0) + weight / (self.rrf_k + rank + 1)
+        ordered = sorted(scores, key=lambda key: scores[key], reverse=True)
+        return [documents[key] for key in ordered[: self.k]]
+
+
+def build_hybrid_retriever(
+    dense: BaseRetriever,
+    sparse: BaseRetriever,
+    weights: tuple[float, float] = (0.5, 0.5),
+    k: int = 4,
+) -> HybridRetriever:
+    """Combine a dense and a sparse retriever via RRF."""
+    return HybridRetriever(retrievers=[dense, sparse], weights=list(weights), k=k)
+
+
+def build_bm25_retriever(chunks: Sequence[TextChunk], k: int = 4) -> BaseRetriever:
+    """Build a BM25 keyword retriever over chunk text (requires rank-bm25)."""
+    from langchain_community.retrievers import BM25Retriever
+
+    retriever = BM25Retriever.from_texts(
+        [chunk.content for chunk in chunks],
+        metadatas=[dict(chunk.metadata) for chunk in chunks],
+    )
+    retriever.k = k
+    return retriever
