@@ -27,6 +27,8 @@ dependencies = [
 huggingface = ["langchain-huggingface>=0.1", "sentence-transformers>=2.6"]
 openai = ["langchain-openai>=0.2"]
 voyage = ["langchain-voyageai>=0.1"]
+anthropic = ["langchain-anthropic>=0.2"]
+ollama = ["langchain-ollama>=0.2"]
 
 [project.scripts]
 rag-loader = "rag_loader.cli:app"
