@@ -1,11 +1,14 @@
 """FastAPI service exposing ingest, query, and chat endpoints."""
 
 import tempfile
+from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, UploadFile
 from langchain_core.language_models import BaseChatModel
+from langchain_core.output_parsers import StrOutputParser
+from sse_starlette.sse import EventSourceResponse
 
 from rag_loader.api.schemas import (
     ChatRequest,
@@ -17,7 +20,7 @@ from rag_loader.api.schemas import (
     RetrievedChunk,
 )
 from rag_loader.factories import build_chat_model
-from rag_loader.generation import build_rag_chain
+from rag_loader.generation import RAG_PROMPT, build_rag_chain, format_context
 from rag_loader.indexing import Indexer
 from rag_loader.settings import Settings
 
@@ -86,6 +89,23 @@ def create_app() -> FastAPI:
         result = chain.invoke({"question": request.question})
         sources = [Citation(source=c.get("source"), page=c.get("page")) for c in result["sources"]]
         return ChatResponse(answer=result["answer"], sources=sources)
+
+    @app.post("/chat/stream")
+    async def chat_stream(
+        request: ChatRequest,
+        indexer: Annotated[Indexer, Depends(get_indexer)],
+        llm: Annotated[BaseChatModel, Depends(get_chat_model)],
+    ) -> EventSourceResponse:
+        docs = indexer.store.similarity_search(request.question, k=4)
+        context = format_context(docs)
+        chain = RAG_PROMPT | llm | StrOutputParser()
+
+        async def token_stream() -> AsyncIterator[dict[str, str]]:
+            async for token in chain.astream({"context": context, "question": request.question}):
+                yield {"event": "token", "data": token}
+            yield {"event": "done", "data": "[DONE]"}
+
+        return EventSourceResponse(token_stream())
 
     return app
 
