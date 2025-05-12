@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     chroma_persist_directory: str | None = None
     qdrant_url: str | None = None
 
+    # Observability
+    log_level: str = "INFO"
+    log_json: bool = False
+
     def pipeline_config(self) -> PipelineConfig:
         """Build a validated :class:`PipelineConfig` from the current settings."""
         return PipelineConfig(

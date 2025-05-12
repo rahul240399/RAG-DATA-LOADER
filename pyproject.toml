@@ -25,6 +25,7 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "python-multipart>=0.0.9",
     "sse-starlette>=2.0",
+    "structlog>=24.0",
 ]
 
 [project.optional-dependencies]
