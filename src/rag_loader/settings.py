@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_json: bool = False
 
+    # Tracing (LangSmith)
+    langsmith_tracing: bool = False
+    langsmith_api_key: str | None = None
+    langsmith_project: str = "rag-data-loader"
+
     def pipeline_config(self) -> PipelineConfig:
         """Build a validated :class:`PipelineConfig` from the current settings."""
         return PipelineConfig(

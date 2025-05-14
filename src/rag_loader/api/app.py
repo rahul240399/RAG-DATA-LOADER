@@ -22,7 +22,7 @@ from rag_loader.api.schemas import (
 from rag_loader.factories import build_chat_model
 from rag_loader.generation import RAG_PROMPT, build_rag_chain, format_context
 from rag_loader.indexing import Indexer
-from rag_loader.observability import configure_logging
+from rag_loader.observability import configure_logging, configure_tracing
 from rag_loader.settings import Settings
 
 
@@ -41,6 +41,7 @@ def get_chat_model(settings: Annotated[Settings, Depends(get_settings)]) -> Base
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.log_level, settings.log_json)
+    configure_tracing(settings)
     app = FastAPI(title="RAG Data Loader", version="0.1.0")
 
     @app.get("/health")
