@@ -1,0 +1,17 @@
+[
+  {
+    "question": "What is retrieval augmented generation?",
+    "ground_truth": "RAG combines retrieval with generation to ground answers in source documents.",
+    "reference_keywords": ["retrieval", "generation", "documents"]
+  },
+  {
+    "question": "Which vector stores are supported?",
+    "ground_truth": "Chroma is used for development and Qdrant for production.",
+    "reference_keywords": ["Chroma", "Qdrant"]
+  },
+  {
+    "question": "How is indexing made idempotent?",
+    "ground_truth": "Chunks use deterministic ids so re-indexing upserts in place instead of duplicating.",
+    "reference_keywords": ["deterministic", "idempotent"]
+  }
+]
