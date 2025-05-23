@@ -9,7 +9,9 @@ from fastapi import Depends, FastAPI, UploadFile
 from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
 from sse_starlette.sse import EventSourceResponse
+from starlette.responses import Response
 
+from rag_loader.api.metrics import metrics_middleware, render_metrics
 from rag_loader.api.schemas import (
     ChatRequest,
     ChatResponse,
@@ -43,10 +45,20 @@ def create_app() -> FastAPI:
     configure_logging(settings.log_level, settings.log_json)
     configure_tracing(settings)
     app = FastAPI(title="RAG Data Loader", version="0.1.0")
+    app.middleware("http")(metrics_middleware)
 
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/ready")
+    def ready(indexer: Annotated[Indexer, Depends(get_indexer)]) -> dict[str, str]:
+        indexer.store.similarity_search("ping", k=1)
+        return {"status": "ready"}
+
+    @app.get("/metrics")
+    def metrics() -> Response:
+        return render_metrics()
 
     @app.post("/ingest", response_model=IngestResponse)
     async def ingest(
