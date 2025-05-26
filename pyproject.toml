@@ -36,6 +36,7 @@ voyage = ["langchain-voyageai>=0.1"]
 anthropic = ["langchain-anthropic>=0.2"]
 ollama = ["langchain-ollama>=0.2"]
 eval = ["ragas>=0.2", "datasets>=2.0"]
+docs = ["mkdocs-material>=9.5"]
 
 [project.scripts]
 rag-loader = "rag_loader.cli:app"

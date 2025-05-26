@@ -1,0 +1,16 @@
+site_name: RAG Data Loader
+site_description: A LangChain-based RAG pipeline — ingest, index, retrieve, generate.
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - content.code.copy
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - API Reference: api.md
+  - Deployment: deployment.md
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
